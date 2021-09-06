@@ -11,10 +11,17 @@ This project is a combination of the amazing work from [retroplasma/earth-revers
 ## Install
 
 ### Node
-`yarn add https://github.com/AIFanatic/earth-3d`
+```shell
+yarn add https://github.com/AIFanatic/earth-3d
+```
 
 ### Browser
-`import { NodeManager } from 'TODO: CDN';`
+```html
+<script src="https://cdn.jsdelivr.net/gh/AIFAnatic/earth-3d@latest/dist/earth-3d-bundle.js"></script>
+```
+```javascript
+import { NodeManager } from 'https://cdn.jsdelivr.net/gh/AIFAnatic/earth-3d@latest/dist/earth-3d-esm-bundle.js';
+```
 
 ## Usage
 ```javascript

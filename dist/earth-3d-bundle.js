@@ -1,4 +1,4 @@
-(() => {
+var earth3d = (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -7022,6 +7022,15 @@
     }
   });
 
+  // src/index.ts
+  var src_exports = {};
+  __export(src_exports, {
+    LatLonBox: () => LatLonBox,
+    NodeData: () => NodeData2,
+    NodeHeader: () => NodeHeader,
+    NodeManager: () => NodeManager
+  });
+
   // src/controller/Resources.ts
   var import_pbf = __toModule(require_pbf());
 
@@ -8192,5 +8201,6 @@
       return mask_map;
     }
   };
+  return src_exports;
 })();
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */

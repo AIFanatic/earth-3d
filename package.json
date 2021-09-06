@@ -32,7 +32,7 @@
     "build": "npm run build:esm && npm run build:esm-bundle && npm run build:iife-bundle && npm run build:worker",
     "build:esm": "tsc && tsc -m es6 --outDir ./dist/esm",
     "build:esm-bundle": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-esm-bundle.js --target=es6 --format=esm",
-    "build:iife-bundle": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-bundle.js --target=es6 --format=iife",
+    "build:iife-bundle": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-bundle.js --target=es6 --format=iife --global-name=earth3d",
     "build:worker": "esbuild src/controller/ResourcesWorker.ts --bundle --outfile=dist/ResourcesWorker.js --target=es6 --format=iife"
   }
 }
