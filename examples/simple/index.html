@@ -1,0 +1,36 @@
+<html>
+    <body>
+        <pre id="nodeTree"></pre>
+        
+        <script type="module">
+            import { NodeManager, LatLonBox } from '../../dist/earth-3d-esm-bundle.js';
+
+            const nodeTreeElement = document.getElementById("nodeTree");
+
+            const filterLatLonBox = new LatLonBox(37.304420471191406, 37.3040771484375, -121.88644409179688, -121.88610076904297);
+
+            const nodeValidationHandler = (node) => {
+                return LatLonBox.is_overlapping(filterLatLonBox, node.latLonBox);
+            }
+
+            const nodeManager = new NodeManager({
+                url: "../../test/earth/",
+                workerPath: "../../dist/ResourcesWorker.js",
+                nodeValidationHandler: nodeValidationHandler,
+                rootEpoch: 897,
+            });
+
+            setInterval(() => {
+                const nodes = nodeManager.get_nodes();
+
+                nodeTreeElement.textContent = `Filtering nodes for ${JSON.stringify(filterLatLonBox)}\n\n`;
+                let nodeTree = "";
+                for (let node_map of nodes) {
+                    const node = node_map[1];
+                    nodeTree += `${node.path} - ${JSON.stringify(node.latLonBox)}\n`;
+                }
+                nodeTreeElement.textContent += nodeTree;
+            }, 1000);
+        </script>
+    </body>
+</html>

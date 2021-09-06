@@ -1,0 +1,38 @@
+{
+  "name": "earth-3d",
+  "version": "2.0.6",
+  "description": "Get 3D data from google earth",
+  "keywords": [
+    "earth 3d",
+    "globe",
+    "maps"
+  ],
+  "author": {
+    "name": "AIFanatic",
+    "url": "https://github.com/AIFanatic/earth-3d"
+  },
+  "homepage": "https://github.com/AIFanatic/earth-3d",
+  "license": "MIT",
+  "main": "dist/earth-3d-bundle.js",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "dependencies": {
+    "lru_map": "^0.4.1",
+    "threads": "^1.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^16.7.10",
+    "@types/pbf": "^3.0.2",
+    "esbuild": "^0.12.25",
+    "pbf": "^3.2.1",
+    "typescript": "^4.1.3"
+  },
+  "scripts": {
+    "dev": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-esm-bundle.js --target=es6 --format=esm --watch",
+    "build": "npm run build:esm && npm run build:esm-bundle && npm run build:iife-bundle && npm run build:worker",
+    "build:esm": "tsc && tsc -m es6 --outDir ./dist/esm",
+    "build:esm-bundle": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-esm-bundle.js --target=es6 --format=esm",
+    "build:iife-bundle": "esbuild src/index.ts --bundle --outfile=dist/earth-3d-bundle.js --target=es6 --format=iife",
+    "build:worker": "esbuild src/controller/ResourcesWorker.ts --bundle --outfile=dist/ResourcesWorker.js --target=es6 --format=iife"
+  }
+}

@@ -1,0 +1,308 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+	  	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	  	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+		<title>Earth 3D</title>
+	</head>
+
+	<body>
+		<script type="x-shader/x-vertex" id="vertexshader">
+			uniform mat4 transform;
+			uniform vec2 uv_offset;
+			uniform vec2 uv_scale;
+			uniform bool octant_mask[8];
+			// attribute vec3 position;
+			attribute float octant;	
+			attribute vec2 texcoords;		
+			varying vec2 v_texcoords;
+		
+			void main() {
+				float mask = octant_mask[int(octant)] ? 0.0 : 1.0;
+				v_texcoords = (texcoords + uv_offset) * uv_scale * mask;
+				// gl_Position = transform * vec4(position, 1.0) * mask;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ) * mask;
+			}
+		</script>
+		
+		<script type="x-shader/x-fragment" id="fragmentshader">
+			#ifdef GL_ES
+				precision mediump float;
+			#endif
+			uniform sampler2D textureMap;
+			varying vec2 v_texcoords;
+			void main() {
+				gl_FragColor = vec4(texture2D(textureMap, v_texcoords).rgb, 1.0);
+			}
+		</script>
+		
+		<script type="module">
+			import { NodeManager } from '../../dist/earth-3d-esm-bundle.js';
+
+			import * as THREE from 'https://cdn.skypack.dev/three@0.130.0/build/three.module.js';
+			import Stats from 'https://cdn.skypack.dev/three@0.130.0/examples/jsm/libs/stats.module.js';
+			import { PointerLockControls } from 'https://cdn.skypack.dev/three@0.130.0/examples/jsm/controls/PointerLockControls.js';
+			
+			import { Movement } from './Movement.js';
+			import { NodeValidator } from './NodeValidator.js'
+
+			window.addEventListener('DOMContentLoaded', async (event) => {
+				// Blaxnk threejs scene
+				const width = 512;
+				const height = 512;
+
+				let scene, camera, renderer, controls;
+
+				let movement = new Movement();
+				let speed = 1000;
+
+				function loadScene() {
+					var stats = new Stats();
+					document.body.appendChild( stats.dom );
+
+					renderer = new THREE.WebGLRenderer();
+
+					renderer.setSize( width, height );
+					renderer.setSize( width, height );
+					scene = new THREE.Scene();
+					scene.background = new THREE.Color( 0x0000ff );
+					
+					window.THREE = THREE;
+					window.scene = scene;
+
+					camera = new THREE.PerspectiveCamera( 59, width / height, 0.1, 100000000 );
+					camera.position.set(-2677035.212674, -4303102.585957, 3861162.740689);
+					camera.lookAt(0, 0, 0);
+					
+					controls = new PointerLockControls( camera, document.body );
+					scene.add( controls.getObject() );
+					document.addEventListener("click", () => {
+						controls.lock();
+					})
+
+					document.body.appendChild( renderer.domElement );
+
+					const clock = new THREE.Clock();
+
+					var dt=1000/30;
+					var timeTarget=0;
+				
+					function animate() {
+						stats.begin();
+
+						const deltaTime = clock.getDelta() * 1000;
+
+						// movement
+						let moveSpeed = speed;
+
+						if (movement.boost) {
+							moveSpeed *= 5;
+						}
+
+						if (movement.moveForward) {
+							controls.moveForward(moveSpeed * deltaTime);
+						}
+						else if (movement.moveBackward) {
+							controls.moveForward(-(moveSpeed * deltaTime));
+						}
+						if (movement.moveLeft) {
+							controls.moveRight(-(moveSpeed * deltaTime));
+						}
+						else if (movement.moveRight) {
+							controls.moveRight(moveSpeed * deltaTime);
+						}
+
+						renderer.render( scene, camera );
+			
+						stats.end();
+
+						requestAnimationFrame( animate );
+					}
+
+					animate();
+				}
+
+				loadScene();
+
+				function loadNode(node, mask) {
+					if (!node) return;
+					if (node.state != 2) return;
+
+					if (!node.data.meshes) return;
+
+					// If mesh already exists just update octant_mask uniform
+					const object = scene.getObjectByName("node_" + node.path);
+					if (object) {
+						let octant_mask = [
+							(mask >> 0) & 1, (mask >> 1) & 1, (mask >> 2) & 1, (mask >> 3) & 1,
+							(mask >> 4) & 1, (mask >> 5) & 1, (mask >> 6) & 1, (mask >> 7) & 1
+						];
+
+						if (JSON.stringify(octant_mask) == JSON.stringify(object.material.uniforms.octant_mask.value)) return;
+
+						object.material.uniforms.octant_mask.value = octant_mask;
+						object.material.uniforms.octant_mask.needsUpdate = true;
+
+						return;
+					}
+
+					const decodedNode = node.data;
+
+					for (let meshe of decodedNode.meshes) {
+						const geometry = new THREE.BufferGeometry();
+						geometry.setIndex(new THREE.BufferAttribute(meshe.indices, 1));
+						geometry.setAttribute("position", new THREE.BufferAttribute(meshe.vertices, 3))
+						geometry.setAttribute("octant", new THREE.BufferAttribute(meshe.octants, 1))
+						geometry.setAttribute("texcoords", new THREE.BufferAttribute(meshe.vertices_uvs, 2))
+
+						// Texture
+						const octant_mask = [
+							(mask >> 0) & 1, (mask >> 1) & 1, (mask >> 2) & 1, (mask >> 3) & 1,
+							(mask >> 4) & 1, (mask >> 5) & 1, (mask >> 6) & 1, (mask >> 7) & 1
+						]
+						const texture = meshe.texture[0];
+						const texture_format = texture.format;
+
+						let texture_map;
+
+						if (texture_format == 1) { // JPG
+							const blob = new Blob([texture.data[0]]);
+							let url =  window.URL.createObjectURL(blob);
+							texture_map = new THREE.TextureLoader().load( url );     
+						}
+						else if (texture_format == 6) { // DXT
+							texture_map = new THREE.DataTexture(texture.data[0], texture.width, texture.height, THREE.RGBFormat, THREE.UnsignedShort565Type);
+
+						}
+						const matrix_globe_from_mesh = new THREE.Matrix4().set(...node.data.matrix_globe_from_mesh).transpose();
+						
+						const material = new THREE.ShaderMaterial( {
+							uniforms: {
+								textureMap: { value: texture_map },
+								transform: { value: matrix_globe_from_mesh },
+								uv_offset: { value: meshe.uv_offset },
+								uv_scale: { value: meshe.uv_scale },
+								octant_mask: { value: octant_mask },
+							},
+							vertexShader: document.getElementById( 'vertexshader' ).textContent,
+							fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+						} );
+
+						// Mesh
+						const mesh = new THREE.Mesh(geometry, material);
+
+						const position = new THREE.Vector3();
+						const quaternion = new THREE.Quaternion();
+						const scale = new THREE.Vector3();
+
+						matrix_globe_from_mesh.decompose(position, quaternion, scale);
+
+						mesh.position.copy(position);
+						mesh.quaternion.copy(quaternion);
+						mesh.scale.copy(scale);
+
+						mesh.name = "node_" + node.path;
+
+						scene.add(mesh);
+					}
+
+					return node;
+				}
+
+				setInterval(() => {
+					const nodes = nodeManager.get_nodes();
+					finishGetNodes(nodes);
+				}, 100);
+
+				const nodeValidationHandler = (node) => {
+					try {
+						
+						const validViewNode = nodeValidator.isNodeIntersectingCamera(camera, node);
+						return validViewNode;
+						
+					} catch (error) {
+						console.error(error)
+					}
+				}
+
+				const nodeManager = new NodeManager({
+					url: "../../test/earth/",
+					workerPath: "../../dist/ResourcesWorker.js",
+					nodeValidationHandler: nodeValidationHandler,
+					rootEpoch: 897,
+				});
+
+				const nodeValidator = new NodeValidator();
+
+				const finishGetNodes = (nodes) => {
+					// Only get masks for fully loaded nodes
+					let nodes_masks = new Map();
+					let nodes_masks_arr = [];
+					for (let node of nodes) {
+						if (node[1].state == 2) {
+							nodes_masks_arr.push(node[1]);
+							nodes_masks.set(node[0], node[1]);
+						}
+					}
+
+					const masks = nodeManager.getMasksForNodes(nodes_masks);
+					for (let node of nodes) {
+						if (node[1].state != 2) continue;
+						
+						loadNode(node[1], masks[node[1].path]);
+					}
+
+					// Clean nodes cache
+					for(let mesh of scene.children) {
+						if (!mesh.name.includes("node_")) {
+							continue;
+						}
+
+						const full_path = mesh.name.split("node_")[1];
+
+						if (!nodes.has(full_path)) {
+							scene.remove( mesh );
+							mesh.geometry.dispose();
+							mesh.material.dispose();
+							renderer.renderLists.dispose();
+						}
+					}
+				}
+
+				async function updateCamera(camera) {
+					// projection
+					const eye = camera.position;
+
+					var up = new THREE.Vector3( 0, 1, 0 );
+					up.applyQuaternion( camera.quaternion );
+
+					camera.up.set(up.x, up.y, up.z);
+
+					const planet_radius = 6371010;
+					const aspect_ratio = width / height;
+					const fov = 0.25 * Math.PI;
+					const altitude = eye.length() - planet_radius;
+					const horizon = Math.sqrt( altitude * (2*planet_radius + altitude) );
+					let near = horizon > 370000 ? altitude / 2 : 1;
+					let far = horizon;
+					if (near >= far) near = far - 1;
+					if (isNaN(far) || far < near) far = near + 1;
+
+					camera.near = near;
+					camera.far = far;
+					camera.updateProjectionMatrix();
+
+					// Speed
+					const speed_amp = Math.min(2600, Math.pow(Math.max(0, (altitude - 500)/10000)+1, 1.337)) / 6;
+					controls.zoomSpeed = speed_amp / 1000;
+					controls.rotateSpeed = speed_amp / 1000;
+					speed = speed_amp;
+				}
+
+				setInterval(() => {
+					updateCamera(camera);
+				}, 100);
+			});
+		</script>
+	</body>
+</html>
