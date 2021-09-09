@@ -150,10 +150,10 @@
 
 					for (let meshe of decodedNode.meshes) {
 						const geometry = new THREE.BufferGeometry();
-						geometry.setIndex(new THREE.BufferAttribute(meshe.indices, 1));
-						geometry.setAttribute("position", new THREE.BufferAttribute(meshe.vertices, 3))
-						geometry.setAttribute("octant", new THREE.BufferAttribute(meshe.octants, 1))
-						geometry.setAttribute("texcoords", new THREE.BufferAttribute(meshe.vertices_uvs, 2))
+						geometry.setIndex(new THREE.Uint16BufferAttribute(meshe.indices, 1));
+						geometry.setAttribute("position", new THREE.Float32BufferAttribute(meshe.vertices, 3));
+						geometry.setAttribute("octant", new THREE.Float32BufferAttribute(meshe.octants, 1));
+						geometry.setAttribute("texcoords", new THREE.Float32BufferAttribute(meshe.vertices_uvs, 2));
 
 						// Texture
 						const octant_mask = [
